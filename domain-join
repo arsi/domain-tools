@@ -1,0 +1,204 @@
+#!/bin/bash
+#
+# Join to domain for Enterprise Linux 7
+#
+# Read domain to be joined from $(hostname)
+# Operating system name and version is read from /etc/os-release
+#
+# Software installs necessary packages
+#
+# @author Arsi Atomi <arsi@porkkana.org>
+
+function Help {
+        echo "Usage: domain-join [OPTIONS]"
+        echo
+        echo "Description: Join machine to Active Directory domain"
+        echo
+        echo "OPTIONS:"
+        echo "  -u, --user              User with join priviledges to domain"
+        echo "  --os-name               Operating system (defaults to /etc/os-release)"
+        echo "  --os-version            Operating system major version (defaults to /etc/os-release)"
+        echo "  --computer-ou           OU for Computer"
+        echo "  --login-groups          Login groups"
+        echo "  --admin-groups          Admin groups (sudoers)"
+        echo "  -v                      Verbose"
+        echo "  -q                      Quiet"
+        echo
+}
+
+LEFTOVERS=()
+while [[ $# -gt 0 ]]
+do
+        key="$1"
+        case $key in
+        --help)
+                Help
+                exit
+                ;;
+        --os-name)
+                OSNAME=$2
+                shift
+                shift
+                ;;
+        --os-version)
+                OSVERSION=$2
+                shift
+                shift
+                ;;
+        --computer-ou)
+                COMPUTEROU=$2
+                shift
+                shift
+                ;;
+        --login-groups)
+                LOGINGROUPS=$2
+                shift
+                shift
+                ;;
+        --admin-groups)
+                ADMINGROUPS=$2
+                shift
+                shift
+                ;;
+        -u|--user)
+                USERNAME=$2
+                shift
+                shift
+                ;;
+        -v)
+                VERBOSE="-v"
+                shift
+                ;;
+        -q)
+                QUIET="-q"
+                shift
+                ;;
+        *)
+                LEFTOVERS+=("$1")
+                shift
+                ;;
+        esac
+done
+set -- "${LEFTOVERS[@]}"
+
+if [ -n "$1" ]
+then
+        DOMAIN=$1
+fi
+
+source /etc/os-release
+
+if [ "$(whoami)" != "root" ]
+then
+        echo "You need to be root."
+        exit 1
+fi
+
+if [ -z "${USERNAME}" ]
+then
+        read -p "Username: " USERNAME
+fi
+
+if [ -z "${LOGINGROUPS}" ]
+then
+        read -p "Login groups: " LOGINGROUPS
+fi
+
+if [ -z "${ADMINGROUPS}" ]
+then
+        read -p "Admin groups (sudoers): " ADMINGROUPS
+fi
+
+USERSTR="--user=${USERNAME}"
+
+if [ -z "${OSNAME}" ]
+then
+        if [ -n "${NAME}" ]
+        then
+                OSNAME="${NAME}"
+                OSNAMESTR="--os-name=\"${OSNAME}\""
+                if [ -z "${OSVERSION}" ]
+                then
+                        IFS='.' read majorver minorver <<< "${VERSION_ID}"
+                        OSVERSION=${majorver}
+                fi
+                OSVERSIONSTR="--os-version=${OSVERSION}"
+        fi
+fi
+
+if [ -n "${COMPUTEROU}" ]
+then
+        COMPUTEROUSTR="--computer-ou=\"${COMPUTEROU}\ "
+fi
+
+if [ -z "${DOMAIN}" ]
+then
+        IFS='.' read x y z <<< "$(hostname)"
+        DOMAIN=${y}.${z}
+fi
+
+if [ -z "${QUIET}" ]
+then
+        echo "Checking and installing missing packages ..."
+fi
+
+yum -y install realmd samba-common oddjob oddjob-mkhomedir sssd adcli samba-common-tools > /dev/null || {
+        echo "Unable to install packages."
+        exit 1
+}
+
+realm discover ${DOMAIN} > /dev/null || {
+        exit 1
+} && {
+        realm join ${VERBOSE} ${USERSTR} ${OSVERSIONSTR} ${COMPUTEROUSTR} ${DOMAIN}
+}
+
+CONFDIR="/etc/sssd"
+CONFDFPATH=${CONFDIR}/"conf.d/$(echo ${DOMAIN} | tr . -).conf"
+SUDOERSDFPATH="/etc/sudoers.d/$(echo ${DOMAIN} | tr . -)"
+
+if [ -z "${QUIET}" ]
+then
+        echo "Modifying ${CONFDIR}/sssd.conf ..."
+fi
+
+mv ${CONFDIR}/sssd.conf ${CONFDIR}/sssd.conf.orig
+
+cat ${CONFDIR}/sssd.conf.orig | \
+sed -e 's#access_provider = ad#access_provider = simple#' \
+> ${CONFDIR}/sssd.conf
+
+chmod 600 ${CONFDIR}/sssd.conf
+
+if [ -z "${QUIET}" ]
+then
+        echo "Creating ${CONFDFPATH} ..."
+fi
+
+cat <<EOF > ${CONFDFPATH}
+[domain/${DOMAIN}]
+krb5_store_password_if_offline = False
+use_fully_qualified_names = True
+access_provider = simple
+simple_allow_groups = ${LOGINGROUPS}
+EOF
+
+chmod 600 ${CONFDFPATH}
+
+if [ -z "${QUIET}" ]
+then
+        echo "Creating ${SUDOERSDFPATH} ..."
+fi
+
+IFS=","
+for ADMINGROUP in ${ADMINGROUPS}
+do
+ADMINGROUP_T=$(echo ${ADMINGROUP} | xargs)
+cat <<EOF >> ${SUDOERSDFPATH}
+%$(echo ${ADMINGROUP_T} | sed 's# #\\ #g')@${DOMAIN} ALL=(ALL) ALL
+EOF
+done
+
+visudo -cf ${SUDOERSDFPATH}
+
+chmod 440 ${SUDOERSDFPATH}
