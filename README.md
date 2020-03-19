@@ -1,6 +1,12 @@
 # domain-tools
 Extended Linux Tools for Active Directory and SSSD
-Author Arsi Atomi <arsi@porkkana.org>
+
+## Supports
+
+Red Hat Enterprise Linux 8
+Red Hat Enterprise Linux 7
+CentOS Linux 8
+CentOS Linux 7
 
 ## Installation
 
@@ -13,3 +19,8 @@ For example: ./domain-join --help
 ## License
 
 This project is licensed under the GNU Lesser General Public License v2.1.
+<https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt>
+
+## Author
+
+Arsi Atomi <arsi@porkkana.org>
