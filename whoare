@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# Show group members
+#
+# @author Arsi Atomi <arsi@porkkana.org>
+
+function Help {
+        echo "Usage: whoare [OPTIONS] groupname"
+        echo
+        echo "Description: Display members of the group (if nested AD group include all members in all groups)"
+        echo
+        echo "OPTIONS:"
+        echo "  -a, --all               Display all /etc/passwd values."
+        echo
+}
+
+ALL=0
+
+LEFTOVERS=()
+while [[ $# -gt 0 ]]
+do
+        key="$1"
+        case ${key} in
+        -a|--all)
+                ALL=1
+                shift
+                ;;
+        --help)
+                Help
+                exit
+                ;;
+        *)
+                LEFTOVERS+=("$1")
+                shift
+                ;;
+        esac
+done
+set -- "${LEFTOVERS[@]}"
+
+ADGROUP=$@
+
+if [ -z "$1" ]
+then
+        Help
+        exit 0
+fi
+
+getent group "${ADGROUP}" >/dev/null || {
+        echo "ERROR: Group \"${ADGROUP}\" not found."
+        exit 1
+}
+
+ADUSER=$(getent group "${ADGROUP}" | awk '{split($0,a,":"); print a[4]}' | tr , '\n')
+
+if [ -z "${ADUSER}" ]
+then
+        echo "No users in \"${ADGROUP}\"."
+        exit
+fi
+
+COMMANDSTR=$(getent passwd ${ADUSER})
+
+if [ "${ALL}" == "1" ]
+then
+        IFS=$'\n' GLOBIGNORE='*' printf "%s${COMMANDSTR}"
+        echo
+else
+        IFS=$'\n' GLOBIGNORE='*' printf "%s${COMMANDSTR}" | awk '{split ($0,c,":");print c[5]}'
+fi
