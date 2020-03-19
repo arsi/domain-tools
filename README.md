@@ -21,8 +21,7 @@ Documentation:
 
 ## License
 
-This project is licensed under the GNU Lesser General Public License v2.1.
-<https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt>
+This project is licensed under the [GNU Lesser General Public License v2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt)
 
 ## Author
 
