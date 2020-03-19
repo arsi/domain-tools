@@ -3,6 +3,7 @@
 # Show group members
 #
 # @author Arsi Atomi <arsi@porkkana.org>
+# @license GNU LGPL 2.1 <https://www.gnu.org/licenses/old-licenses/lgpl-2.1.txt>
 
 function Help {
         echo "Usage: whoare [OPTIONS] groupname"
