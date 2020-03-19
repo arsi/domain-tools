@@ -3,10 +3,10 @@ Extended Linux Tools for Active Directory and SSSD
 
 ## Supports
 
-Red Hat Enterprise Linux 8
-Red Hat Enterprise Linux 7
-CentOS Linux 8
-CentOS Linux 7
+* Red Hat Enterprise Linux 8
+* Red Hat Enterprise Linux 7
+* CentOS Linux 8
+* CentOS Linux 7
 
 ## Installation
 
@@ -14,7 +14,10 @@ You can run these scripts from any directory.
 
 ## Usage
 
-For example: ./domain-join --help
+Documentation:
+```bash
+./domain-join --help
+```
 
 ## License
 
