@@ -7,6 +7,8 @@ Extended Linux Tools for Active Directory and SSSD
 * Red Hat Enterprise Linux 7
 * CentOS Linux 8
 * CentOS Linux 7
+* Oracle Linux 8
+* Oracle Linux 7
 
 ## Installation
 
