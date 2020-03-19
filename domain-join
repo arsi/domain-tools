@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Join to domain for Enterprise Linux 7
+# Join to domain for Enterprise Linux 7 & 8
 #
 # Read domain to be joined from $(hostname)
 # Operating system name and version is read from /etc/os-release
@@ -202,3 +202,5 @@ done
 visudo -cf ${SUDOERSDFPATH}
 
 chmod 440 ${SUDOERSDFPATH}
+
+systemctl restart sssd
